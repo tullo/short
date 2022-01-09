@@ -5,7 +5,9 @@ metadata:
     app: short
   name: short
 spec:
+  progressDeadlineSeconds: 600
   replicas: 3
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       app: short
@@ -20,17 +22,16 @@ spec:
         app: short
     spec:
       containers:
-        - image: gcr.io/cockroach-dev-inf/cockroachlabs/short:f9d59d5-bob
+        - image: registry.cloud.okteto.net/tullo/short:okteto
           imagePullPolicy: Always
           name: short
           command:
             - short
             - -b
-            - 0.0.0.0:8443
+            - :8080
             - -c
-            - $(connstring)
-            - --canonicalHost
-            - go.crdb.dev
+            - $(connstring) # env var expansion
+            - --httpOnly
           env:
             - name: connstring
               valueFrom:
@@ -38,21 +39,19 @@ spec:
                   key: connstring
                   name: short-secrets
           ports:
-            - containerPort: 8443
+            - containerPort: 8080
               protocol: TCP
-              name: https
+              name: http
           livenessProbe:
             failureThreshold: 3
             httpGet:
               path: /healthz
-              port: https
-              scheme: HTTPS
+              port: http
           readinessProbe:
             failureThreshold: 3
             httpGet:
               path: /healthz?ready=1
-              port: https
-              scheme: HTTPS
+              port: http
           resources:
             requests:
               cpu: "50m"
@@ -63,6 +62,8 @@ spec:
           volumeMounts:
             - mountPath: "/secrets"
               name: secrets
+      dnsPolicy: ClusterFirst
+      securityContext: {}
       terminationGracePeriodSeconds: 30
       volumes:
         - name: secrets
@@ -73,37 +74,16 @@ apiVersion: v1
 kind: Service
 metadata:
   annotations:
-    beta.cloud.google.com/backend-config: '{"default":"crdb-dev-iap-config"}'
-    cloud.google.com/app-protocols: '{"https":"HTTP2"}'
+    dev.okteto.com/auto-ingress: "true"
   labels:
     app: short
   name: short
 spec:
-  externalTrafficPolicy: Cluster
   ports:
-    - name: https
-      port: 443
-      protocol: TCP
-      targetPort: https
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
   selector:
     app: short
-  type: NodePort
----
-apiVersion: v1
-kind: Service
-metadata:
-  annotations:
-    cloud.google.com/app-protocols: '{"https":"HTTP2"}'
-  labels:
-    app: short
-  name: short-public
-spec:
-  externalTrafficPolicy: Cluster
-  ports:
-    - name: https
-      port: 443
-      protocol: TCP
-      targetPort: https
-  selector:
-    app: short
-  type: NodePort
+  type: ClusterIP
