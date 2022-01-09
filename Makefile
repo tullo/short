@@ -2,7 +2,7 @@
 
 all: build
 
-build: generate
+build: generate fmt
 	go build -o bin/short  ./cmd/short
 
 clean:
