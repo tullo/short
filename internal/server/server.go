@@ -130,7 +130,7 @@ func (s *Server) Run(ctx context.Context) error {
 	})
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/_/asset/", s.handler(authRequired, canonical, s.asset))
+	mux.HandleFunc("/_/asset/", s.handler(authPublic, canonical, s.asset))
 	mux.HandleFunc("/_/debug/pprof/", s.handler(authRequired, anyHost, s.pprof))
 	mux.HandleFunc("/_/edit/", s.handler(authRequired, canonical, s.edit))
 	mux.HandleFunc("/_/healthz", s.handler(authPublic, anyHost, s.healthz))
